@@ -1,0 +1,40 @@
+services:
+  app:
+    build: .
+    ports:
+      # Sobrescreva com APP_PORT se a 8080 já estiver ocupada na sua máquina.
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - .:/var/www/html
+    environment:
+      DB_HOST: db
+      DB_NAME: sistema_medico
+      DB_USER: sistema
+      DB_PASS: sistema
+      APP_DEBUG: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: sistema_medico
+      MYSQL_USER: sistema
+      MYSQL_PASSWORD: sistema
+    ports:
+      - "${DB_PORT_HOST:-3307}:3306"
+    volumes:
+      - dados-mysql:/var/lib/mysql
+      # Scripts nesta pasta rodam só quando o volume está vazio.
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      # O app só sobe depois que o MySQL aceita conexão de verdade.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-psistema", "-usistema"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  dados-mysql:
